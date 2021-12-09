@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/styles';
-
+import { bindActionCreators } from 'redux';
+import { connect } from 'react-redux';
+import { listar, salvar, deletar, alterarStatus } from '../../store/tarefasReducer';
+import { setOpenDialog, setMessage } from '../../store/dialogReducer';
 import { TarefasToolbar, TarefasTable } from './components';
-import axios from 'axios';
+
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle
+} from '@material-ui/core';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -13,65 +23,39 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const TarefaList = () => {
-  const classes = useStyles();
-
-  const [tarefas, setTarefas] = useState([]);
-
-  const salvar = (tarefa) => {
-    axios.post('https://minhastarefas-api.herokuapp.com/tarefas', tarefa, {
-      headers: { 'x-tenant-id': 'fulano@email.com' }
-    }).then(response => {
-      const novaTarefa = response.data;
-      setTarefas([...tarefas, novaTarefa]);
-    }).catch(erro => {
-      console.log(erro);
-    });
-  }
-
-  const listarTarefas = () => {
-    axios.get('https://minhastarefas-api.herokuapp.com/tarefas', {
-      headers: { 'x-tenant-id': 'fulano@email.com' }
-    }).then(response => {
-      const listaDeTarefas = response.data;
-      setTarefas(listaDeTarefas);
-    });
-  }
-
-  const alterarStatus = (id) => {
-    axios.patch(`https://minhastarefas-api.herokuapp.com/tarefas/${id}`, null, {
-      headers: { 'x-tenant-id': 'fulano@email.com' }
-    }).then(response => {
-      const lista = [...tarefas];
-      lista.forEach(tarefa => {
-        if (tarefa.id === id)
-          tarefa.done = true;
-      });
-      setTarefas(lista);
-    });
-  }
-
-  const deletar = id => {
-    axios.delete(`https://minhastarefas-api.herokuapp.com/tarefas/${id}`, {
-      headers: { 'x-tenant-id': 'fulano@email.com' }
-    }).then(response => {
-      const lista = tarefas.filter(tarefa => tarefa.id !== id);
-      setTarefas(lista);
-    });
-  }
+const TarefaList = (props) => {
+  const classes = useStyles();  
 
   useEffect(() => {
-    listarTarefas();
+    props.listar();
   }, []);
 
   return (
     <div className={classes.root}>
-      <TarefasToolbar salvar={salvar} />
+      <TarefasToolbar salvar={props.salvar} />
       <div className={classes.content}>
-        <TarefasTable tarefas={tarefas} alterarStatus={alterarStatus} deletar={deletar} />
+        <TarefasTable tarefas={props.tarefas} alterarStatus={props.alterarStatus} deletar={props.deletar} />
       </div>
+      <Dialog open={props.openDialog} onClose={e => props.setOpenDialog(false)}>
+        <DialogTitle></DialogTitle>
+        <DialogContent>
+          {props.mensagem}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={e => props.setOpenDialog(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
 
-export default TarefaList;
+const mapStateToProps = state => ({
+  tarefas: state.tarefas.tarefas,
+  mensagem: state.dialog.mensagem,
+  openDialog: state.dialog.openDialog
+})
+
+const mapDispatchToProps = dispatch =>
+  bindActionCreators({ listar, salvar, deletar, alterarStatus, setOpenDialog, setMessage }, dispatch)
+
+export default connect(mapStateToProps, mapDispatchToProps)(TarefaList);
